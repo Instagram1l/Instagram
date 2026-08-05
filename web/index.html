@@ -3,21 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camorro — مساعد الاختراق الذكي</title>
+<title>كامورو — وكيل الاختراق الذكي</title>
 <style>
-  :root{--bg:#0a0e14;--panel:#111822;--accent:#00e5a0;--accent2:#00b8ff;--text:#d6e2ea;--muted:#6b7a88;--code:#1a2332}
+  :root{--bg:#0a0e14;--panel:#111822;--accent:#00e5a0;--accent2:#00b8ff;--text:#d6e2ea;--muted:#6b7a88;--code:#1a2332;--danger:#ff5470}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
-  header{padding:14px 20px;background:var(--panel);border-bottom:1px solid #1e2a3a;display:flex;align-items:center;gap:12px}
+  header{padding:14px 20px;background:var(--panel);border-bottom:1px solid #1e2a3a;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:900;color:#04121c;font-size:20px}
-  h1{font-size:20px}.sub{color:var(--muted);font-size:12px}
+  h1{font-size:20px}
+  .sub{color:var(--muted);font-size:12px}
+  .chip{margin-inline-start:auto;background:#0d1520;border:1px solid #1e2a3a;border-radius:20px;padding:6px 14px;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+  .chip b{color:var(--accent)}
+  .chip .mode{color:var(--danger)}
   #chat{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
-  .msg{max-width:80%;padding:12px 16px;border-radius:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+  .msg{max-width:82%;padding:12px 16px;border-radius:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
   .user{align-self:flex-start;background:#1a4a5e}
   .bot{align-self:flex-end;background:var(--panel);border:1px solid #1e2a3a}
-  .msg code{background:var(--code);padding:2px 6px;border-radius:6px;font-size:13px;direction:ltr;display:inline-block}
-  .msg pre{background:var(--code);padding:10px;border-radius:8px;overflow-x:auto;direction:ltr;text-align:left;font-size:12px;margin-top:8px}
+  .msg code{background:var(--code);padding:2px 6px;border-radius:6px;font-size:13px;direction:ltr;display:inline-block;font-family:Consolas,monospace}
+  .msg pre{background:var(--code);padding:12px;border-radius:8px;overflow-x:auto;direction:ltr;text-align:left;font-size:12px;margin-top:8px;font-family:Consolas,monospace;line-height:1.5}
   .typing{color:var(--muted);font-style:italic}
+  .typing::after{content:'';animation:dots 1.2s infinite}
+  @keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
   footer{padding:12px 20px;background:var(--panel);border-top:1px solid #1e2a3a;display:flex;gap:10px}
   input{flex:1;background:var(--code);border:1px solid #243447;color:var(--text);padding:12px 16px;border-radius:10px;font-size:15px;outline:none}
   input:focus{border-color:var(--accent)}
@@ -30,7 +36,11 @@
   <div class="logo">C</div>
   <div>
     <h1>كامورو <span style="color:var(--muted);font-weight:400">Camorro</span></h1>
-    <div class="sub">مساعد اختبار الاختراق بالذكاء الاصطناعي — يعمل محليًا على جهازك</div>
+    <div class="sub">وكيل اختبار الاختراق بالذكاء الاصطناعي — يعمل محليًا 100%</div>
+  </div>
+  <div class="chip">
+    <span>النموذج: <b id="model">...</b></span>
+    <span>الوضع: <b class="mode" id="mode">...</b></span>
   </div>
 </header>
 <div id="chat"></div>
@@ -40,26 +50,51 @@
 </footer>
 <script>
 const chat=document.getElementById('chat'),input=document.getElementById('input'),send=document.getElementById('send');
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function render(text){
+  const parts=text.split(/```/);
+  let html='';
+  for(let i=0;i<parts.length;i++){
+    if(i%2===1){
+      const code=escapeHtml(parts[i].replace(/^[a-zA-Z]+\n/,''));
+      html+='<pre><code>'+code+'</code></pre>';
+    }else{
+      html+=escapeHtml(parts[i]).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br>');
+    }
+  }
+  return html;
+}
 function addMsg(role,text){
   const d=document.createElement('div');
   d.className='msg '+(role==='user'?'user':'bot');
-  d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
+  if(role==='user'){d.textContent=text;}
+  else{d.innerHTML=render(text);}
+  chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
 }
 async function ask(){
   const msg=input.value.trim();if(!msg)return;
   addMsg('user',msg);input.value='';send.disabled=true;
   const t=document.createElement('div');
-  t.className='msg bot typing';t.textContent='كامورو كيخدم... 🤖';
-  chat.appendChild(t);
+  t.className='msg bot typing';t.textContent='كامورو كيخدم';
+  chat.appendChild(t);chat.scrollTop=chat.scrollHeight;
   try{
     const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
     const data=await res.json();t.remove();addMsg('bot',data.reply);
   }catch(e){t.remove();addMsg('bot','⚠️ خطأ في الاتصال بالخادم المحلي');}
-  send.disabled=false;
+  send.disabled=false;input.focus();
 }
 send.onclick=ask;
 input.addEventListener('keydown',e=>{if(e.key==='Enter')ask();});
-addMsg('bot','سلام! أنا كامورو 🤖 جاهز نعاونك في اختبار الاختراق وتحليل الأهداف. شنو بغيتي نبداو؟');
+async function loadHealth(){
+  try{
+    const res=await fetch('/api/health');
+    const d=await res.json();
+    document.getElementById('model').textContent=d.model||'غير معروف';
+    document.getElementById('mode').textContent=d.unrestricted?'UNRESTRICTED 🔥':'عادي (محمي)';
+  }catch(e){document.getElementById('model').textContent='لا يوجد خادم';}
+}
+loadHealth();
+addMsg('bot','سلام! أنا كامورو 🤖 جاهز نعاونك في اختبار الاختراق: استطلاع، فحص، استغلال، وبحث عن ثغرات. شنو بغيتي نبداو؟');
 </script>
 </body>
 </html>
